@@ -9,6 +9,11 @@ Servo Servo1;
 String password = "1234";
 String enteredPassword;
 
+int buzzerPin = 11;
+
+int greenLed = 52;
+int redLed = 53;
+
 char keys[ROWS][COLS] = {
   {'1','2','3','A'},
   {'4','5','6','B'},
@@ -24,7 +29,10 @@ Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 
 void setup(){
   Serial.begin(9600);
-  Servo1.attach(servoPin); 
+  Servo1.attach(servoPin);
+  pinMode(buzzerPin, OUTPUT);
+  pinMode(greenLed, OUTPUT);
+  pinMode(redLed, OUTPUT);
 }
   
 void loop(){
@@ -41,15 +49,29 @@ void loop(){
 
 
   // Check password correctness
-  if ((enteredPassword.length() == 4) && (key == '#')) {
+  if (key == '#') {
     Serial.println("Pass entered");
 
     if (enteredPassword == password) {
       Serial.println("Lock opened!");
+      digitalWrite(greenLed, HIGH);
+      digitalWrite(buzzerPin, HIGH);
+      delay(200);
+      digitalWrite(buzzerPin, LOW);
+      delay(200);
+      digitalWrite(buzzerPin, HIGH);
+      delay(200);
+      digitalWrite(buzzerPin, LOW);
+      digitalWrite(greenLed, LOW);
       enteredPassword = "";
     }
     else {
       Serial.println("Incorrect password!");
+      digitalWrite(buzzerPin, HIGH);
+      digitalWrite(redLed, HIGH);
+      delay(500);
+      digitalWrite(buzzerPin, LOW);
+      digitalWrite(redLed, LOW);
       Serial.println("Try again");
       enteredPassword = "";
     }
