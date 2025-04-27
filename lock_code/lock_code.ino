@@ -1,19 +1,24 @@
 #include <Keypad.h>
-#include <Servo.h> 
+#include <Servo.h>
 
-const byte ROWS = 4; //four rows
-const byte COLS = 4; //four columns
+// Constants
+const byte ROWS = 4;
+const byte COLS = 4;
 
-int servoPin = 10;
-Servo Servo1; 
-String password = "1234";
-String enteredPassword;
+const int servoPin = 10;
+const int buzzerPin = 11;
+const int greenLed = 52;
+const int redLed = 53;
 
-int buzzerPin = 11;
+const int shortBeepDuration = 200;
+const int longBeepDuration = 500;
 
-int greenLed = 52;
-int redLed = 53;
+// Password setup
+const char password[] = "1234"; // 4 digits + null terminator
+char enteredPassword[5] = "";
+byte enteredLength = 0;
 
+// Keypad setup
 char keys[ROWS][COLS] = {
   {'1','2','3','A'},
   {'4','5','6','B'},
@@ -21,71 +26,90 @@ char keys[ROWS][COLS] = {
   {'*','0','#','D'}
 };
 
-byte rowPins[ROWS] = {9, 8, 7, 6}; //connect to the row pinouts of the keypad
-byte colPins[COLS] = {5, 4, 3, 2}; //connect to the column pinouts of the keypad
+byte rowPins[ROWS] = {9, 8, 7, 6};
+byte colPins[COLS] = {5, 4, 3, 2};
 
-//Create an object of keypad
-Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
+Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
 
-void setup(){
+// Servo object
+Servo servoLock;
+
+void setup() {
   Serial.begin(9600);
-  Servo1.attach(servoPin);
+  servoLock.attach(servoPin);
+  setupPins();
+}
+
+void loop() {
+  char key = keypad.getKey();
+
+  if (key) {
+    delay(50); // Simple debounce
+    if (key == keypad.getKey()) { // Confirm stable press
+      handleKeyPress(key);
+    }
+  }
+}
+
+// ---- Helper Functions ----
+
+void setupPins() {
   pinMode(buzzerPin, OUTPUT);
   pinMode(greenLed, OUTPUT);
   pinMode(redLed, OUTPUT);
 }
-  
-void loop(){
-  char key = keypad.getKey();// Read the key
-  
 
-
-  // Print if key pressed
-  if ((key) && enteredPassword.length() < 4 && (key != '#') && (key != '*')) {
-    enteredPassword += key;
-    Serial.println(enteredPassword);
-  }
-  
-
-
-  // Check password correctness
-  if (key == '#') {
-    Serial.println("Pass entered");
-
-    if (enteredPassword == password) {
-      Serial.println("Lock opened!");
-      digitalWrite(greenLed, HIGH);
-      digitalWrite(buzzerPin, HIGH);
-      delay(200);
-      digitalWrite(buzzerPin, LOW);
-      delay(200);
-      digitalWrite(buzzerPin, HIGH);
-      delay(200);
-      digitalWrite(buzzerPin, LOW);
-      digitalWrite(greenLed, LOW);
-      enteredPassword = "";
-    }
-    else {
-      Serial.println("Incorrect password!");
-      digitalWrite(buzzerPin, HIGH);
-      digitalWrite(redLed, HIGH);
-      delay(500);
-      digitalWrite(buzzerPin, LOW);
-      digitalWrite(redLed, LOW);
-      Serial.println("Try again");
-      enteredPassword = "";
+void handleKeyPress(char key) {
+  if (key >= '0' && key <= '9') { // Only accept numbers
+    if (enteredLength < 4) {
+      enteredPassword[enteredLength++] = key;
+      enteredPassword[enteredLength] = '\0'; // Null terminate
+      Serial.println(enteredPassword);
     }
   }
-
-
-  // Clear password
-  if (key == '*') {
-    enteredPassword = "";
-    Serial.println("Password cleared");
+  else if (key == '#') {
+    verifyPassword();
   }
+  else if (key == '*') {
+    resetEnteredPassword();
+  }
+}
 
+void verifyPassword() {
+  Serial.println("Password entered.");
+  if (strcmp(enteredPassword, password) == 0) {
+    handleCorrectPassword();
+  } else {
+    handleWrongPassword();
+  }
+}
 
+void handleCorrectPassword() {
+  Serial.println("Access granted!");
+  digitalWrite(greenLed, HIGH);
+  buzz(shortBeepDuration);
+  buzz(shortBeepDuration);
+  digitalWrite(greenLed, LOW);
+  resetEnteredPassword();
+}
 
-  // Servo1.write(0); Use later, servo is currently broken
+void handleWrongPassword() {
+  Serial.println("Access denied!");
+  digitalWrite(redLed, HIGH);
+  buzz(longBeepDuration);
+  digitalWrite(redLed, LOW);
+  resetEnteredPassword();
+}
 
+void resetEnteredPassword() {
+  enteredLength = 0;
+  enteredPassword[0] = '\0';
+  Serial.println("Password cleared.");
+}
+
+void buzz(int duration) {
+  digitalWrite(buzzerPin, HIGH);
+  delay(duration);
+  digitalWrite(buzzerPin, LOW);
+  delay(duration);
 }
